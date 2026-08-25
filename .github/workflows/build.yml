@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - 'Containerfile'
-      - 'fedora-rawhide.repo'
-      - 'keys/**'
       - '.github/workflows/**'
   pull_request:
     branches: [main]
@@ -37,20 +35,17 @@ jobs:
 
       - name: Build bootc image
         run: |
-          # 用 buildah 构建（无需守护进程，适合 CI）
+          # 固定时间戳标签（build 和 push 用同一个值）
+          TAG="$(date +%Y%m%d%H%M)"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
           buildah bud --format docker \
             --build-arg CLASH_VERGE_VERSION=2.5.2 \
             -t "$IMAGE_NAME:latest" \
-            -t "$IMAGE_NAME:$(date +%Y%m%d%H%M)" \
+            -t "$IMAGE_NAME:$TAG" \
             .
 
       - name: Push to ghcr.io
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | buildah login ghcr.io -u "${{ github.actor }}" --password-stdin
           buildah push --format docker "$IMAGE_NAME:latest"
-          buildah push --format docker "$IMAGE_NAME:$(date +%Y%m%d%H%M)"
-
-      - name: Update latest tag
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "Image pushed: $IMAGE_NAME:latest"
+          buildah push --format docker "$IMAGE_NAME:$TAG"
