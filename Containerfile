@@ -3,23 +3,22 @@
 FROM quay.io/hummingbird-community/bootc-os:latest
 
 # ============================================================
-# 1. 基础工具 + 系统配置
+# 1. 仓库配置 (hummingbird 官方 + fc44 优先 + rawhide 补充)
+#    fc44 的 qt6 依赖 openssl3 与 hummingbird 匹配; rawhide 的 qt6 需 openssl4 会冲突
 # ============================================================
-# 加入 Fedora rawhide 仓库（KDE/输入法/工具需要，且与 hummingbird 互补）
-COPY fedora-rawhide.repo /etc/yum.repos.d/fedora-rawhide.repo
-COPY keys/ /etc/pki/rpm-gpg/
+RUN printf '[public-hummingbird-x86_64-rpms]\nname=Hummingbird\nbaseurl=https://packages.redhat.com/api/pulp-content/public-hummingbird/$arch/\nenabled=1\ngpgcheck=0\npriority=1\n' > /etc/yum.repos.d/hummingbird.repo && \
+    printf '[fedora-44]\nname=Fedora 44\nbaseurl=https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/$basearch/os/\nenabled=1\ngpgcheck=0\npriority=1\n' > /etc/yum.repos.d/fedora-44.repo && \
+    printf '[fedora-rawhide]\nname=Fedora Rawhide\nbaseurl=https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Everything/$basearch/os/\nenabled=1\ngpgcheck=0\npriority=50\n' > /etc/yum.repos.d/fedora-rawhide.repo && \
+    printf '[main]\npriority=50\n' > /etc/dnf/dnf.conf
 
 # 系统级环境变量: 中文 locale + 输入法
 RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
     printf 'GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\nXMODIFIERS=@im=fcitx\nINPUT_METHOD=fcitx\nSDL_IM_MODULE=fcitx\n' > /etc/environment
 
 # ============================================================
-# 2. 中文输入法 fcitx5 + 拼音
+# 2. 中文输入法 fcitx5 + 拼音 (fc44 版 qt6-webengine, openssl3 兼容)
 # ============================================================
-# fcitx5-chinese-addons 依赖 Qt6 WebEngine（云拼音/内置浏览器），先装齐依赖
-RUN dnf install -y --enablerepo=fedora-rawhide \
-        qt6-qtwebengine qt6-qtwebenginewidgets \
-    && dnf install -y --enablerepo=fedora-rawhide \
+RUN dnf install -y \
         fcitx5 fcitx5-chinese-addons fcitx5-configtool \
         fcitx5-gtk fcitx5-qt fcitx5-autostart \
     && dnf clean all
@@ -31,14 +30,14 @@ RUN mkdir -p /etc/skel/.config/fcitx5 && \
 # ============================================================
 # 3. zram 压缩交换 (8G, zstd)
 # ============================================================
-RUN dnf install -y --enablerepo=fedora-rawhide zram-generator \
+RUN dnf install -y zram-generator \
     && dnf clean all
 RUN printf '[zram0]\nzram-size = 8192\ncompression-algorithm = zstd\n' > /etc/systemd/zram-generator.conf
 
 # ============================================================
 # 4. OpenClaw (npm 全局安装) — 需要 node >= 24.15
 # ============================================================
-RUN dnf install -y --enablerepo=fedora-rawhide nodejs npm \
+RUN dnf install -y nodejs npm \
     && node --version \
     && npm install -g openclaw@2026.7.1-2 \
     && dnf clean all
@@ -48,9 +47,9 @@ RUN dnf install -y --enablerepo=fedora-rawhide nodejs npm \
 # ============================================================
 ARG CLASH_VERGE_VERSION=2.5.2
 # clash verge 依赖 webkit2gtk + appindicator，一并装上
-RUN dnf install -y --enablerepo=fedora-rawhide \
+RUN dnf install -y \
         webkit2gtk4.1 libayatana-appindicator-gtk3 \
-    && dnf install -y --enablerepo=fedora-rawhide \
+    && dnf install -y \
         https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v${CLASH_VERGE_VERSION}/Clash.Verge-${CLASH_VERGE_VERSION}-1.x86_64.rpm \
     && dnf clean all
 
