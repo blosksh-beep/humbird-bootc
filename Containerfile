@@ -16,7 +16,10 @@ RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
 # ============================================================
 # 2. 中文输入法 fcitx5 + 拼音
 # ============================================================
+# fcitx5-chinese-addons 依赖 Qt6 WebEngine（云拼音/内置浏览器），先装齐依赖
 RUN dnf install -y --enablerepo=fedora-rawhide \
+        qt6-qtwebengine qt6-qtwebenginewidgets \
+    && dnf install -y --enablerepo=fedora-rawhide \
         fcitx5 fcitx5-chinese-addons fcitx5-configtool \
         fcitx5-gtk fcitx5-qt fcitx5-autostart \
     && dnf clean all
@@ -33,9 +36,10 @@ RUN dnf install -y --enablerepo=fedora-rawhide zram-generator \
 RUN printf '[zram0]\nzram-size = 8192\ncompression-algorithm = zstd\n' > /etc/systemd/zram-generator.conf
 
 # ============================================================
-# 4. OpenClaw (npm 全局安装)
+# 4. OpenClaw (npm 全局安装) — 需要 node >= 24.15
 # ============================================================
 RUN dnf install -y --enablerepo=fedora-rawhide nodejs npm \
+    && node --version \
     && npm install -g openclaw@2026.7.1-2 \
     && dnf clean all
 
@@ -43,7 +47,10 @@ RUN dnf install -y --enablerepo=fedora-rawhide nodejs npm \
 # 5. Clash Verge (代理客户端, rpm 版)
 # ============================================================
 ARG CLASH_VERGE_VERSION=2.5.2
+# clash verge 依赖 webkit2gtk + appindicator，一并装上
 RUN dnf install -y --enablerepo=fedora-rawhide \
+        webkit2gtk4.1 libayatana-appindicator-gtk3 \
+    && dnf install -y --enablerepo=fedora-rawhide \
         https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v${CLASH_VERGE_VERSION}/Clash.Verge-${CLASH_VERGE_VERSION}-1.x86_64.rpm \
     && dnf clean all
 
