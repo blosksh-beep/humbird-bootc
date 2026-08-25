@@ -1,0 +1,56 @@
+name: Build bootc image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Containerfile'
+      - 'fedora-rawhide.repo'
+      - 'keys/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+  schedule:
+    # 每周日 UTC 02:00 自动重建（捡上游基础镜像更新）
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up podman/buildah
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman buildah skopeo
+          podman --version
+
+      - name: Build bootc image
+        run: |
+          # 用 buildah 构建（无需守护进程，适合 CI）
+          buildah bud --format docker \
+            --build-arg CLASH_VERGE_VERSION=2.5.2 \
+            -t "$IMAGE_NAME:latest" \
+            -t "$IMAGE_NAME:$(date +%Y%m%d%H%M)" \
+            .
+
+      - name: Push to ghcr.io
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login ghcr.io -u "${{ github.actor }}" --password-stdin
+          buildah push --format docker "$IMAGE_NAME:latest"
+          buildah push --format docker "$IMAGE_NAME:$(date +%Y%m%d%H%M)"
+
+      - name: Update latest tag
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Image pushed: $IMAGE_NAME:latest"

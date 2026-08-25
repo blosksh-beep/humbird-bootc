@@ -1,0 +1,20 @@
+# 自动监控基础镜像更新 (Dependabot)
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    # 监控 Containerfile 里的基础镜像 (quay.io/hummingbird-community/bootc-os)
+    # 有新版时自动开 PR 更新 FROM 引用
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "03:00"
+    open-pull-requests-limit: 5
