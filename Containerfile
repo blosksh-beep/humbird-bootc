@@ -17,8 +17,10 @@ RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
 
 # ============================================================
 # 2. 中文输入法 fcitx5 + 拼音 (fc44 版 qt6-webengine, openssl3 兼容)
+#    排除 rawhide 分离词典包: fc44 的 hunspell-en 是合并包已含全部 en_* 词典
 # ============================================================
 RUN dnf install -y \
+        --exclude='hunspell-en-AU' --exclude='hunspell-en-CA' --exclude='hunspell-en-GB' \
         fcitx5 fcitx5-chinese-addons fcitx5-configtool \
         fcitx5-gtk fcitx5-qt fcitx5-autostart \
     && dnf clean all
