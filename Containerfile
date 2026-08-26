@@ -37,6 +37,13 @@ RUN dnf install -y \
         fcitx5-gtk fcitx5-qt fcitx5-autostart \
     && dnf clean all
 
+# fontconfig 配置修复: hummingbird 基础镜像的 fontconfig rpm 缺 /etc/fonts/
+# (2026-08-26 实测: fc-list 报 "Cannot load default config file" →
+#  登录界面/桌面文字渲染异常, 黑屏与登录循环的根因之一)
+RUN dnf reinstall -y fontconfig \
+    && test -f /etc/fonts/fonts.conf \
+    && dnf clean all
+
 # 拼音设为默认输入法
 RUN mkdir -p /etc/skel/.config/fcitx5 && \
     printf '[Groups/0]\nName=Default\nDefault Layout=us\nDefaultIM=pinyin\n\n[Groups/0/Items/0]\nName=keyboard-us\n\n[Groups/0/Items/1]\nName=pinyin\n\n[GroupOrder]\n0=Default\n' > /etc/skel/.config/fcitx5/profile
@@ -81,5 +88,8 @@ LABEL org.opencontainers.image.title="humbird-bootc" \
       org.opencontainers.image.source="https://github.com/blosksh-beep/humbird-bootc"
 
 # 声明这是 bootc 可引导镜像
+# boot-args: i915.enable_dc=0 — 禁用显示 DC5/DC6 电源状态
+#   (2026-08-26: rawhide 内核 + 缺 DMC 固件导致 s2idle 待机唤醒挂死/黑屏,
+#   该参数是 i915 待机唤醒问题的标准缓解)
 RUN mkdir -p /usr/lib/bootc && \
-    printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\n' > /usr/lib/bootc/bootc.yaml
+    printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\nboot-args:\n  - "i915.enable_dc=0"\n' > /usr/lib/bootc/bootc.yaml
