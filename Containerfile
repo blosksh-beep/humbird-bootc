@@ -93,3 +93,7 @@ LABEL org.opencontainers.image.title="humbird-bootc" \
 #   该参数是 i915 待机唤醒问题的标准缓解)
 RUN mkdir -p /usr/lib/bootc && \
     printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\nboot-args:\n  - "i915.enable_dc=0"\n' > /usr/lib/bootc/bootc.yaml
+
+# 独立版本标识: 让 GRUB 引导菜单/BLS 标题区分自定义镜像与官方基础镜像
+# (基础镜像标题是 "Hummingbird OS 20251124", 多部署时无法区分)
+RUN sed -i 's/^VERSION=.*/VERSION="20251124-custom"/; s/^PRETTY_NAME=.*/PRETTY_NAME="Hummingbird OS 20251124-custom"/' /usr/lib/os-release
