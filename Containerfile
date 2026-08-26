@@ -17,7 +17,9 @@ RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
 
 # 无线网卡固件: Intel AX201 (8086:34F0) 需要 iwlwifi-mvm-firmware + linux-firmware
 # (基础镜像可能不含, 显式安装确保 WiFi 可用)
-RUN dnf install -y iwlwifi-mvm-firmware iwlwifi-mld-firmware linux-firmware-whence \
+# 2026-08-26: 补上完整 linux-firmware 主包 (含 i915 DMC + 全部 iwlwifi) —
+#   2026-08-26 boot-repair 根因: 只有子包导致 WiFi/i915 DMC 固件缺失
+RUN dnf install -y linux-firmware iwlwifi-mvm-firmware iwlwifi-mld-firmware linux-firmware-whence \
     && dnf clean all
 
 # 图形界面: 显式安装完整 KDE Plasma 桌面 + 启用 sddm + 默认图形 target
