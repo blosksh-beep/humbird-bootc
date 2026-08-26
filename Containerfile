@@ -15,6 +15,18 @@ RUN printf '[public-hummingbird-x86_64-rpms]\nname=Hummingbird\nbaseurl=https://
 RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
     printf 'GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\nXMODIFIERS=@im=fcitx\nINPUT_METHOD=fcitx\nSDL_IM_MODULE=fcitx\n' > /etc/environment
 
+# 无线网卡固件: Intel AX201 (8086:34F0) 需要 iwlwifi-mvm-firmware + linux-firmware
+# (基础镜像可能不含, 显式安装确保 WiFi 可用)
+RUN dnf install -y iwlwifi-mvm-firmware iwlwifi-mld-firmware linux-firmware-whence \
+    && dnf clean all
+
+# 图形界面: 显式安装完整 KDE Plasma 桌面 + 启用 sddm + 默认图形 target
+# (基础镜像可能缺组件导致无图形界面, 用环境组确保齐全)
+RUN dnf group install -y --with-optional kde-desktop \
+    && dnf install -y sddm plasma-workspace \
+    && systemctl enable sddm && systemctl set-default graphical.target \
+    && dnf clean all
+
 # ============================================================
 # 2. 中文输入法 fcitx5 + 拼音 (fc44 版 qt6-webengine, openssl3 兼容)
 #    排除 rawhide 分离词典包: fc44 的 hunspell-en 是合并包已含全部 en_* 词典
