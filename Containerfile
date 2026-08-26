@@ -48,6 +48,13 @@ RUN dnf reinstall -y fontconfig \
 RUN dnf install -y git wget vim rsync \
     && dnf clean all
 
+# 无线网卡/蓝牙: 基础镜像有 NetworkManager-wifi+wpa_supplicant, 自定义镜像缺
+# (2026-08-26 实测: NM 报 "'wifi' plugin not available", WiFi 卡不可用;
+#  bluez 在但 bluetoothd 未启用 → 一并 enable)
+RUN dnf install -y NetworkManager-wifi wpa_supplicant \
+    && systemctl enable bluetooth \
+    && dnf clean all
+
 # 拼音设为默认输入法
 RUN mkdir -p /etc/skel/.config/fcitx5 && \
     printf '[Groups/0]\nName=Default\nDefault Layout=us\nDefaultIM=pinyin\n\n[Groups/0/Items/0]\nName=keyboard-us\n\n[Groups/0/Items/1]\nName=pinyin\n\n[GroupOrder]\n0=Default\n' > /etc/skel/.config/fcitx5/profile
@@ -60,11 +67,10 @@ RUN dnf install -y zram-generator \
 RUN printf '[zram0]\nzram-size = 8192\ncompression-algorithm = zstd\n' > /etc/systemd/zram-generator.conf
 
 # ============================================================
-# 4. OpenClaw (npm 全局安装) — 需要 node >= 24.15
+# 4. Node.js 运行时 (openclaw 不烘焙进镜像 —
+#    openclaw.service 用 ~/.npm-global/bin/openclaw + nvm node 24, 家目录升级不丢)
 # ============================================================
 RUN dnf install -y nodejs npm \
-    && node --version \
-    && npm install -g openclaw@2026.7.1-2 \
     && dnf clean all
 
 # ============================================================
