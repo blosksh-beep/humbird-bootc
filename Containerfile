@@ -44,6 +44,10 @@ RUN dnf reinstall -y fontconfig \
     && test -f /etc/fonts/fonts.conf \
     && dnf clean all
 
+# 维护工具: 基础镜像有 git/wget/vim/rsync, 自定义镜像居然没有 (2026-08-26 实测缺失)
+RUN dnf install -y git wget vim rsync \
+    && dnf clean all
+
 # 拼音设为默认输入法
 RUN mkdir -p /etc/skel/.config/fcitx5 && \
     printf '[Groups/0]\nName=Default\nDefault Layout=us\nDefaultIM=pinyin\n\n[Groups/0/Items/0]\nName=keyboard-us\n\n[Groups/0/Items/1]\nName=pinyin\n\n[GroupOrder]\n0=Default\n' > /etc/skel/.config/fcitx5/profile
@@ -88,11 +92,15 @@ LABEL org.opencontainers.image.title="humbird-bootc" \
       org.opencontainers.image.source="https://github.com/blosksh-beep/humbird-bootc"
 
 # 声明这是 bootc 可引导镜像
-# boot-args: i915.enable_dc=0 — 禁用显示 DC5/DC6 电源状态
+RUN mkdir -p /usr/lib/bootc && \
+    printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\n' > /usr/lib/bootc/bootc.yaml
+
+# 内核参数: i915.enable_dc=0 — 禁用显示 DC5/DC6 电源状态
 #   (2026-08-26: rawhide 内核 + 缺 DMC 固件导致 s2idle 待机唤醒挂死/黑屏,
 #   该参数是 i915 待机唤醒问题的标准缓解)
-RUN mkdir -p /usr/lib/bootc && \
-    printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\nboot-args:\n  - "i915.enable_dc=0"\n' > /usr/lib/bootc/bootc.yaml
+#   ⚠️ 机制: /usr/lib/bootc/kargs.d/*.toml (bootc 1.16 只认这个, bootc.yaml 的 boot-args 字段不存在)
+RUN mkdir -p /usr/lib/bootc/kargs.d && \
+    printf 'kargs = ["i915.enable_dc=0"]\n' > /usr/lib/bootc/kargs.d/90-i915.toml
 
 # 独立版本标识: 让 GRUB 引导菜单/BLS 标题区分自定义镜像与官方基础镜像
 # (基础镜像标题是 "Hummingbird OS 20251124", 多部署时无法区分)
