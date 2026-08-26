@@ -59,6 +59,21 @@ RUN dnf install -y NetworkManager-wifi wpa_supplicant \
 RUN mkdir -p /etc/skel/.config/fcitx5 && \
     printf '[Groups/0]\nName=Default\nDefault Layout=us\nDefaultIM=pinyin\n\n[Groups/0/Items/0]\nName=keyboard-us\n\n[Groups/0/Items/1]\nName=pinyin\n\n[GroupOrder]\n0=Default\n' > /etc/skel/.config/fcitx5/profile
 
+# KWin 输入法集成 (2026-08-26 实测: kwinrc InputMethod 为空 → Wayland 应用全部无 IME,
+# 输入法调不出来; 必须显式设 InputMethod=fcitx)
+RUN mkdir -p /etc/skel/.config && \
+    printf '[Wayland]\nInputMethod=fcitx\n' > /etc/skel/.config/kwinrc
+
+# KDE 完整组件: 基础镜像有而 group install kde-desktop 漏掉的 (2026-08-26 包对比)
+# aurorae=装饰引擎(WhiteSur 报错根因), bluedevil=蓝牙托盘, dolphin/ark=文件/压缩,
+# breeze 主题(WhiteSur-cursors 缺失根因), abrt=崩溃报告, lm_sensors/fancontrol=风扇,
+# bootupd=引导更新, fwupd=固件更新, intel-audio-firmware=音频固件, samba=文件共享
+RUN dnf install -y aurorae bluedevil dolphin ark akonadi-server baloo-widgets \
+        breeze-cursor-theme breeze-gtk breeze-icon-theme \
+        abrt lm_sensors fancontrol bootupd fwupd \
+        intel-audio-firmware samba \
+    && dnf clean all
+
 # ============================================================
 # 3. zram 压缩交换 (8G, zstd)
 # ============================================================
