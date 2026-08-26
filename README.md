@@ -38,6 +38,14 @@ sudo systemctl reboot
 sudo bootc upgrade
 ```
 
+## 版本命名
+
+- **`old`** — 本机当前正在运行的镜像（bootc rollback 部署，重启后仍是回退点）
+- **`v1`、`v2`、`v3`…** — 每次构建自动递增的版本号（仓库 `VERSION` 文件管理）
+- **`latest`** — 始终指向最新构建
+
+切换指定版本：`sudo bootc switch ghcr.io/blosksh-beep/humbird-bootc:v2`
+
 ## 开发
 
 ```bash
