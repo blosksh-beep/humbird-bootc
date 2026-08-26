@@ -9,7 +9,7 @@ FROM quay.io/hummingbird-community/bootc-os:latest
 RUN printf '[public-hummingbird-x86_64-rpms]\nname=Hummingbird\nbaseurl=https://packages.redhat.com/api/pulp-content/public-hummingbird/$arch/\nenabled=1\ngpgcheck=0\npriority=1\n' > /etc/yum.repos.d/hummingbird.repo && \
     printf '[fedora-44]\nname=Fedora 44\nbaseurl=https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/$basearch/os/\nenabled=1\ngpgcheck=0\npriority=1\n' > /etc/yum.repos.d/fedora-44.repo && \
     printf '[fedora-rawhide]\nname=Fedora Rawhide\nbaseurl=https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Everything/$basearch/os/\nenabled=1\ngpgcheck=0\npriority=50\n' > /etc/yum.repos.d/fedora-rawhide.repo && \
-    printf '[main]\npriority=50\n' > /etc/dnf/dnf.conf
+    printf '[main]\npriority=50\nexcludepkgs=hunspell-en-AU hunspell-en-CA hunspell-en-GB\n' > /etc/dnf/dnf.conf
 
 # 系统级环境变量: 中文 locale + 输入法
 RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
@@ -29,10 +29,8 @@ RUN dnf group install -y --with-optional kde-desktop \
 
 # ============================================================
 # 2. 中文输入法 fcitx5 + 拼音 (fc44 版 qt6-webengine, openssl3 兼容)
-#    排除 rawhide 分离词典包: fc44 的 hunspell-en 是合并包已含全部 en_* 词典
 # ============================================================
 RUN dnf install -y \
-        --exclude='hunspell-en-AU' --exclude='hunspell-en-CA' --exclude='hunspell-en-GB' \
         fcitx5 fcitx5-chinese-addons fcitx5-configtool \
         fcitx5-gtk fcitx5-qt fcitx5-autostart \
     && dnf clean all
