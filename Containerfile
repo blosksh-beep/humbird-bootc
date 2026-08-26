@@ -74,6 +74,16 @@ RUN dnf install -y aurorae bluedevil dolphin ark akonadi-server baloo-widgets \
         intel-audio-firmware samba \
     && dnf clean all
 
+# XWayland 修复 (2026-08-26 实测): /tmp/.X11-unix 开机未被创建
+# (tmpfs 每次清空 + systemd tmpfiles 时序竞态) → kwin 无法启动 Xwayland
+# → 所有 X11 应用(WPS/clash/任何 xcb 程序)无法显示
+# 修复: 显式装 Xwayland + 保证目录在登录前存在的 oneshot 单元
+RUN dnf install -y xorg-x11-server-Xwayland xwaylandvideobridge \
+    && dnf clean all
+RUN mkdir -p /usr/local/lib/systemd/system && \
+    printf '[Unit]\nDescription=Create X11 socket directory\nDefaultDependencies=no\nAfter=tmp.mount\nBefore=display-manager.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/install -d -m 1777 -o root -g root /tmp/.X11-unix /tmp/.ICE-unix\n\n[Install]\nWantedBy=sysinit.target\n' > /usr/local/lib/systemd/system/x11-socket-dir.service && \
+    systemctl enable x11-socket-dir.service
+
 # ============================================================
 # 3. zram 压缩交换 (8G, zstd)
 # ============================================================
@@ -89,16 +99,9 @@ RUN dnf install -y nodejs npm \
     && dnf clean all
 
 # ============================================================
-# 5. Clash Verge (代理客户端, rpm 版)
+# 5. (Clash Verge 已移除 — 2026-08-26: 用户系统里有家目录版
+#    ~/.local/bin/clash-verge + ~/下载/*.deb, 升级不丢, 无需烘焙)
 # ============================================================
-ARG CLASH_VERGE_VERSION=2.5.2
-# clash verge 依赖 webkit2gtk + appindicator，一并装上
-RUN dnf install -y \
-        webkit2gtk4.1 libayatana-appindicator-gtk3 \
-    && dnf install -y \
-        https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v${CLASH_VERGE_VERSION}/Clash.Verge-${CLASH_VERGE_VERSION}-1.x86_64.rpm \
-    && dnf clean all
-
 # ============================================================
 # 6. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
 # ============================================================
