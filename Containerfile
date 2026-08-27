@@ -74,6 +74,12 @@ RUN dnf install -y aurorae bluedevil dolphin ark akonadi-server baloo-widgets \
         intel-audio-firmware samba \
     && dnf clean all
 
+# 常用 KDE 应用补全 (2026-08-28): kate/gwenview/okular/elisa-player/dragon/kcalc
+# 此前镜像缺失 → 开始菜单"图形/多媒体/教育"等分类整体消失; 装回恢复完整分类
+# (注意: elisa 的 Fedora 包名是 elisa-player)
+RUN dnf install -y kate gwenview okular elisa-player dragon kcalc \
+    && dnf clean all
+
 # XWayland 修复 (2026-08-26 实测): /tmp/.X11-unix 开机未被创建
 # (tmpfs 每次清空 + systemd tmpfiles 时序竞态) → kwin 无法启动 Xwayland
 # → 所有 X11 应用(WPS/clash/任何 xcb 程序)无法显示
@@ -83,6 +89,10 @@ RUN dnf install -y xorg-x11-server-Xwayland xwaylandvideobridge \
 RUN mkdir -p /usr/local/lib/systemd/system && \
     printf '[Unit]\nDescription=Create X11 socket directory\nDefaultDependencies=no\nAfter=tmp.mount\nBefore=display-manager.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/install -d -m 1777 -o root -g root /tmp/.X11-unix /tmp/.ICE-unix\n\n[Install]\nWantedBy=sysinit.target\n' > /usr/local/lib/systemd/system/x11-socket-dir.service && \
     systemctl enable x11-socket-dir.service
+
+# 虚拟机串口 getty 噪音 (2026-08-28): serial-getty@ttyS0 在虚拟机上
+# 每分钟报 "failed to get terminal attributes" 刷屏 → 镜像级 mask
+RUN systemctl mask serial-getty@ttyS0.service
 
 # ============================================================
 # 3. zram 压缩交换 (8G, zstd)
