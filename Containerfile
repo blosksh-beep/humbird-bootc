@@ -22,6 +22,13 @@ RUN printf 'LANG=zh_CN.UTF-8\nLC_ALL=zh_CN.UTF-8\n' > /etc/locale.conf && \
 RUN dnf install -y linux-firmware iwlwifi-mvm-firmware iwlwifi-mld-firmware linux-firmware-whence \
     && dnf clean all
 
+# Intel VAAPI 视频驱动 (2026-08-28): 此前镜像未装 iHD → 所有视频纯软解。
+# 装上后 VP9/MPEG2/JPEG/VP8 可硬解; H.264/HEVC/AV1 因 rawhide 内核 UAPI
+# 与 iHD 25.4.6 不兼容暂缺(驱动静默隐藏), 待内核/驱动更新后自动恢复,
+# 用 vainfo 验证即可 (Ice Lake 只能配 iHD, i965 不支持)
+RUN dnf install -y libva-intel-media-driver intel-gmmlib \
+    && dnf clean all
+
 # 图形界面: 显式安装完整 KDE Plasma 桌面 + 启用 sddm + 默认图形 target
 # (基础镜像可能缺组件导致无图形界面, 用环境组确保齐全)
 RUN dnf group install -y --with-optional kde-desktop \
