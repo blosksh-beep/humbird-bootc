@@ -130,11 +130,10 @@ RUN mkdir -p /usr/lib/bootc/kargs.d && \
     printf 'kargs = ["i915.enable_dc=0"]\n' > /usr/lib/bootc/kargs.d/90-i915.toml
 
 # 独立版本标识: 让 GRUB 引导菜单/BLS 标题区分自定义镜像与官方基础镜像
-# 版本标识: 基础镜像标题是 "Hummingbird OS 20251124", 多部署时无法区分
-# 2026-08-28 修复: 原静态 "20251124-custom" 对所有构建都一样, GRUB 仍无法区分;
-# 改为从仓库 VERSION 文件动态生成 "20251124-custom-vN" → 每次构建的
-# os-release/PRETTY_NAME 唯一, 引导条目与部署可辨识、可回退
+# 小版本方案 (2026-08-28): os-release 直接显示 vN.NN → 引导菜单标题
+# = "Hummingbird OS v4.01", 每次构建唯一、可区分、可回退;
+# VERSION 文件存 4.01, CI 构建后自动 bump 到 4.02
 COPY VERSION /etc/humbird-image-version
 RUN IMG_VER="$(tr -d '[:space:]' < /etc/humbird-image-version)" && \
-    sed -i "s/^VERSION=.*/VERSION=\"20251124-custom-v${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS 20251124-custom-v${IMG_VER}\"/" /usr/lib/os-release && \
+    sed -i "s/^VERSION=.*/VERSION=\"v${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS v${IMG_VER}\"/" /usr/lib/os-release && \
     rm -f /etc/humbird-image-version

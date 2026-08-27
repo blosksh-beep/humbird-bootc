@@ -59,7 +59,8 @@ jobs:
       - name: Bump version for next build
         if: github.event_name != 'pull_request'
         run: |
-          NEXT=$((VER + 1))
+          # 小版本递增: v4.01 -> v4.02 (awk 浮点 + %.2f 保证两位小数)
+          NEXT=$(awk -v v="$VER" 'BEGIN { printf "%.2f", v + 0.01 }')
           echo "$NEXT" > VERSION
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -70,11 +71,11 @@ jobs:
       - name: Prune non-versioned tags (keep vN versions only)
         if: github.event_name != 'pull_request'
         run: |
-          # 删除所有不带 vN 标签的版本（时间戳旧版），只保留 v1/v2/v3... 和 latest
+          # 删除所有不带 vN 标签的版本（时间戳旧版），只保留 v1/v2/v3/v4.01... 和 latest
           curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/users/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/versions?per_page=50" \
-            | jq -r '.[] | select(.metadata.container.tags != null and .metadata.container.tags != []) | select([.metadata.container.tags[] | test("^v[0-9]+$")] | all(. == false)) | .id' \
+            | jq -r '.[] | select(.metadata.container.tags != null and .metadata.container.tags != []) | select([.metadata.container.tags[] | test("^v[0-9.]+$")] | all(. == false)) | .id' \
             | while read -r ID; do
               echo "Deleting old timestamp-tagged version ID: $ID"
               curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
