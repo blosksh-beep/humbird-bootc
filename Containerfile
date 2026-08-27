@@ -99,9 +99,12 @@ RUN dnf install -y nodejs npm \
     && dnf clean all
 
 # ============================================================
-# 5. (Clash Verge 已移除 — 2026-08-26: 用户系统里有家目录版
-#    ~/.local/bin/clash-verge + ~/下载/*.deb, 升级不丢, 无需烘焙)
+# 5. Clash Verge 运行依赖 (本体不烘焙 — 家目录版 ~/.local/bin/clash-verge,
+#    升级不丢; 但 Tauri v2 强依赖系统 webkit2gtk4.1 运行库,
+#    2026-08-28 实测缺库 → ldd 报 libwebkit2gtk-4.1.so.0 not found, 启动即崩)
 # ============================================================
+RUN dnf install -y webkit2gtk4.1 libayatana-appindicator-gtk3 \
+    && dnf clean all
 # ============================================================
 # 6. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
 # ============================================================
