@@ -124,11 +124,16 @@ RUN dnf install -y webkit2gtk4.1 libayatana-appindicator-gtk3 \
     && dnf clean all
 # ============================================================
 # 6. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
+#    2026-08-28: 引导条目上限控制 — 保留最近 8 个部署 (用户要求),
+#    bootc-update 升级后自动 trim; 另有独立每日 trim timer 兜底
 # ============================================================
-RUN mkdir -p /usr/local/lib/systemd/system && \
-    printf '[Unit]\nDescription=Auto-update bootc image\nWants=bootc-update.timer\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bootc upgrade\n' > /usr/local/lib/systemd/system/bootc-update.service && \
+COPY trim-deployments.sh /usr/local/bin/trim-deployments.sh
+RUN chmod +x /usr/local/bin/trim-deployments.sh && \
+    mkdir -p /usr/local/lib/systemd/system && \
+    printf '[Unit]\nDescription=Auto-update bootc image\nWants=bootc-update.timer\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bootc upgrade\nExecStartPost=/usr/local/bin/trim-deployments.sh\n' > /usr/local/lib/systemd/system/bootc-update.service && \
     printf '[Unit]\nDescription=Check bootc image updates daily\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/bootc-update.timer && \
-    systemctl enable bootc-update.timer
+    printf '[Unit]\nDescription=Trim old bootc deployments (keep newest 8)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/trim-deployments.timer && \
+    systemctl enable bootc-update.timer trim-deployments.timer
 
 # bootc 镜像元数据
 LABEL org.opencontainers.image.title="humbird-bootc" \
