@@ -87,6 +87,17 @@ RUN dnf install -y aurorae bluedevil dolphin ark akonadi-server baloo-widgets \
 RUN dnf install -y kate gwenview okular elisa-player dragon kcalc \
     && dnf clean all
 
+# 软件中心 Discover 崩溃修复 (2026-08-29):
+# 根因: Hummingbird 是 ostree/bootc 系统 → /run/ostree-booted 存在 →
+#       packagekit.service 因 ConditionPathExists=!/run/ostree-booted 永不启动 →
+#       Discover 加载 packagekit-backend 检测到无效后丢弃时,
+#       在 AppStream::Pool::loadFinished 回调里 abort (SIGSEGV/SI_TKILL) 崩溃。
+#       日志: "Discarding invalid backend packagekit-backend" → KCrash 循环。
+#       8-27 清缓存只是暂时躲过, 真因是 packagekit 后端在 bootc 系统不可用。
+# 修复: 移除 Discover 的 packagekit 后端插件 (bootc 系统永远用不到 rpm 包管理),
+#       仅保留 flatpak/fwupd/kns 后端。
+RUN rm -f /usr/lib64/qt6/plugins/discover/packagekit-backend.so
+
 # XWayland 修复 (2026-08-26 实测): /tmp/.X11-unix 开机未被创建
 # (tmpfs 每次清空 + systemd tmpfiles 时序竞态) → kwin 无法启动 Xwayland
 # → 所有 X11 应用(WPS/clash/任何 xcb 程序)无法显示
