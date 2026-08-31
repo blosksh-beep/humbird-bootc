@@ -98,6 +98,14 @@ RUN dnf install -y kate gwenview okular elisa-player dragon kcalc \
 #       仅保留 flatpak/fwupd/kns 后端。
 RUN rm -f /usr/lib64/qt6/plugins/discover/packagekit-backend.so
 
+# 打印服务 CUPS 启用 (2026-08-29):
+# 根因: 基础镜像/自定义镜像 cups.service preset=disabled → 打印服务从未启动,
+#      系统无法发现/连接打印机 (lpinfo 报错, 网络打印机不可见)。
+# 修复: 启用 cups + cups-browsed (网络打印机自动发现, 本机打印机为
+#      CS407-1DFN @ 192.168.2.101, IPP 协议); cups/cups-filters 包已随
+#      kde-desktop 组安装, 仅需 enable。
+RUN systemctl enable cups.service cups.socket cups.path cups-browsed.service
+
 # XWayland 修复 (2026-08-26 实测): /tmp/.X11-unix 开机未被创建
 # (tmpfs 每次清空 + systemd tmpfiles 时序竞态) → kwin 无法启动 Xwayland
 # → 所有 X11 应用(WPS/clash/任何 xcb 程序)无法显示
