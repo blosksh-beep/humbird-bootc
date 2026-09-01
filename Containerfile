@@ -174,7 +174,10 @@ RUN mkdir -p /usr/lib/bootc/kargs.d && \
 # 小版本方案 (2026-08-28): os-release 直接显示 vN.NN → 引导菜单标题
 # = "Hummingbird OS v4.01", 每次构建唯一、可区分、可回退;
 # VERSION 文件存 4.01, CI 构建后自动 bump 到 4.02
+# 2026-09-01: VERSION_ID 一并改写 — KDE 系统设置"关于本机"/kinfo 读的是
+#   KOSRelease::versionId() (NAME + VERSION_ID 组合), 不读 PRETTY_NAME;
+#   不改的话设置里永远显示 "Hummingbird OS 20251124" (基础镜像默认值)
 COPY VERSION /etc/humbird-image-version
 RUN IMG_VER="$(tr -d '[:space:]' < /etc/humbird-image-version)" && \
-    sed -i "s/^VERSION=.*/VERSION=\"v${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS v${IMG_VER}\"/" /usr/lib/os-release && \
+    sed -i "s/^VERSION=.*/VERSION=\\\"v${IMG_VER}\\\"/; s/^VERSION_ID=.*/VERSION_ID=\\\"${IMG_VER}\\\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\\\"Hummingbird OS v${IMG_VER}\\\"/" /usr/lib/os-release && \
     rm -f /etc/humbird-image-version
