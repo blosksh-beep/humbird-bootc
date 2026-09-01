@@ -151,7 +151,7 @@ RUN chmod +x /usr/local/bin/trim-deployments.sh && \
     mkdir -p /usr/local/lib/systemd/system && \
     printf '[Unit]\nDescription=Auto-update bootc image\nWants=bootc-update.timer\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bootc upgrade\nExecStartPost=/usr/local/bin/trim-deployments.sh\n' > /usr/local/lib/systemd/system/bootc-update.service && \
     printf '[Unit]\nDescription=Check bootc image updates daily\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/bootc-update.timer && \
-    printf '[Unit]\nDescription=Trim old bootc deployments (keep newest 8)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/trim-deployments.timer && \
+    printf '[Unit]\nDescription=Trim old bootc deployments (keep newest 5)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/trim-deployments.timer && \
     systemctl enable bootc-update.timer trim-deployments.timer
 
 # bootc 镜像元数据

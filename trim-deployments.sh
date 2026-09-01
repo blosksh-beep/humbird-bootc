@@ -1,10 +1,10 @@
 #!/bin/bash
 # trim-deployments.sh — 保留最近 N 个部署, 其余 unpin + undeploy
-# 用途: bootc 系统引导条目上限控制 (用户要求保留最近 8 个镜像的引导)
+# 用途: bootc 系统引导条目上限控制 (用户要求保留最近 5 个镜像的引导)
 # 挂载点: bootc-update.service 的 ExecStartPost (镜像烘焙, 见 Containerfile)
 set -e
 
-N="${KEEP_DEPLOYMENTS:-8}"
+N="${KEEP_DEPLOYMENTS:-5}"
 
 # 部署行形如: "* default <64hex>.<idx>" 或 "  default <64hex>.<idx>"
 # 顺序: 最新(staged/booted)在前, 最旧在后
