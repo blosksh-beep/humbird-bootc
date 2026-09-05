@@ -106,6 +106,13 @@ RUN rm -f /usr/lib64/qt6/plugins/discover/packagekit-backend.so
 #      kde-desktop 组安装, 仅需 enable。
 RUN systemctl enable cups.service cups.socket cups.path cups-browsed.service
 
+# Hermes Desktop 启动修复 (2026-09-05): 每次 hermes update 后
+# 因 GitHub 源码更新 → desktop-build-stamp.json contentHash 失配 →
+# launcher 触发 npm install → node-pty gyp rebuild 缺 make/gcc 报错
+# (这台机器无编译工具链) → Desktop dependency install failed 启动中止。
+# 修复: 系统镜像内置编译工具链, 重建成功即闭环, 不再需要本地 patch。
+RUN dnf install -y make gcc gcc-c++ && dnf clean all && rm -rf /var/cache/dnf
+
 # XWayland 修复 (2026-08-26 实测): /tmp/.X11-unix 开机未被创建
 # (tmpfs 每次清空 + systemd tmpfiles 时序竞态) → kwin 无法启动 Xwayland
 # → 所有 X11 应用(WPS/clash/任何 xcb 程序)无法显示
@@ -172,12 +179,13 @@ RUN mkdir -p /usr/lib/bootc/kargs.d && \
 
 # 独立版本标识: 让 GRUB 引导菜单/BLS 标题区分自定义镜像与官方基础镜像
 # 小版本方案 (2026-08-28): os-release 直接显示 vN.NN → 引导菜单标题
-# = "Hummingbird OS v4.01", 每次构建唯一、可区分、可回退;
-# VERSION 文件存 4.01, CI 构建后自动 bump 到 4.02
-# 2026-09-01: VERSION_ID 一并改写 — KDE 系统设置"关于本机"/kinfo 读的是
-#   KOSRelease::versionId() (NAME + VERSION_ID 组合), 不读 PRETTY_NAME;
-#   不改的话设置里永远显示 "Hummingbird OS 20251124" (基础镜像默认值)
+# 2026-09-01: VERSION_ID 一并改写 (KDE 设置读 KOSRelease::versionId)
+# 2026-09-05: 格式改为 "Hummingbird OS MMDD 4.0.x"(日期=构建月+日)——
+#   日期稳(w阶段层每重跑, os-release 层才真正重建, 重写顺序保证后写胜出);
+#   VERSION_ID 用 "MMDDAY,4.0.x" 合法 ASCII 点串供 KDE 设置读取;
+#   PRETTY_NAME 同格式, GRUB/bootc 标题随之更新
 COPY VERSION /etc/humbird-image-version
 RUN IMG_VER="$(tr -d '[:space:]' < /etc/humbird-image-version)" && \
-    sed -i "s/^VERSION=.*/VERSION=\\\"v${IMG_VER}\\\"/; s/^VERSION_ID=.*/VERSION_ID=\\\"${IMG_VER}\\\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\\\"Hummingbird OS v${IMG_VER}\\\"/" /usr/lib/os-release && \
+    MMDAY="$(date -u +%m%d)" && \
+    sed -i "s/^VERSION=.*/VERSION=\"${IMG_VER}\"/; s/^VERSION_ID=.*/VERSION_ID=\"${MMDAY}.${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS ${MMDAY} ${IMG_VER}\"/" /usr/lib/os-release && \
     rm -f /etc/humbird-image-version
