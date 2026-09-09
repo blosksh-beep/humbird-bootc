@@ -7,7 +7,6 @@ on:
       - 'Containerfile'
       - '.github/workflows/**'
       - 'VERSION'
-      - 'mok/**'
   pull_request:
     branches: [main]
   schedule:
@@ -47,31 +46,11 @@ jobs:
           echo "VER=$VER" >> "$GITHUB_ENV"
           echo "version: v$VER"
 
-      - name: Write MOK signing keys (not baked into image)
-        # Containerfile 第 7 段用 RUN --mount=type=secret 读取私钥对
-        # vboxdrv 等内核模块签名 (Secure Boot)。secret 只在该 RUN 层可见,
-        # 不会进入镜像层。公钥在仓库 mok/ 下, 随镜像烘焙供 mokutil --import。
-        env:
-          MOK_PRIV_B64: ${{ secrets.MOK_PRIVATE_KEY_B64 }}
-        run: |
-          if [ -n "$MOK_PRIV_B64" ]; then
-            echo "$MOK_PRIV_B64" | base64 -d > /tmp/mok_priv.pem
-            chmod 600 /tmp/mok_priv.pem
-            ls -la /tmp/mok_priv.pem
-          else
-            echo "::warning::MOK_PRIVATE_KEY_B64 secret 未设置, 跳过签名(构建将因无 secret 失败除非 Containerfile 容忍)"
-          fi
-
       - name: Build bootc image
         run: |
           # 标签: latest + 版本号 vN (版本递增管理)
-          SECRET_ARGS=""
-          if [ -f /tmp/mok_priv.pem ]; then
-            SECRET_ARGS="--secret id=mok_priv,src=/tmp/mok_priv.pem"
-          fi
           buildah bud --format docker \
             --build-arg CLASH_VERGE_VERSION=2.5.2 \
-            $SECRET_ARGS \
             -t "$IMAGE_NAME:latest" \
             -t "$IMAGE_NAME:v$VER" \
             .

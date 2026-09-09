@@ -150,58 +150,7 @@ RUN dnf install -y webkit2gtk4.1 libayatana-appindicator-gtk3 \
     && dnf clean all
 
 # ============================================================
-# 6. VirtualBox 桌面虚拟化 (2026-09-10)
-# ============================================================
-# VirtualBox 不在 Fedora 官方/RPM Fusion nonfree, 只在 RPM Fusion FREE:
-#   fc44: VirtualBox 7.2.x + akmod-VirtualBox (源码 kmodsrc)
-# 内核模块 (vboxdrv/vboxnetadp/vboxnetflt) 必须与"镜像内内核"精确匹配,
-#   故在镜像构建期用 akmods 针对 kernel-core 版本现场编译,
-#   不能依赖宿主内核 (CI runner / 本机构建机内核 ≠ 镜像内核)。
-# Secure Boot 已启用 (本机 UEFI) → 未签名模块被拒载:
-#   模块用持久 MOK 私钥签名 (私钥经 build secret 注入, 不落镜像层),
-#   公钥烘焙进 /etc/pki/akmods/certs/public_key.pem|der —
-#   首次部署后执行一次 `sudo mokutil --import ...der` + 重启 enroll,
-#   此后所有用同一 MOK 私钥构建的镜像都通过 Secure Boot 校验。
-# RPM Fusion repo (fc44, 与 fedora-44 同优先级低于 rawhide)
-RUN printf '[rpmfusion-free]\nname=RPM Fusion Free fc44\nbaseurl=https://download1.rpmfusion.org/free/fedora/releases/44/Everything/$basearch/os/\nenabled=1\ngpgcheck=0\npriority=1\n' > /etc/yum.repos.d/rpmfusion-free.repo
-# VirtualBox 本体 (dnf 自动拉 VirtualBox-server 等; %post 无 systemd 依赖可容器内装)
-RUN dnf install -y VirtualBox akmod-VirtualBox VirtualBox-kmodsrc \
-    && dnf clean all
-
-# ============================================================
-# 7. VirtualBox 内核模块编译 + Secure Boot MOK 签名 (2026-09-10)
-#    模块针对镜像内 kernel-core 编译; CI 构建时把 MOK 私钥经
-#    --secret 注入 (见 .github/workflows/build.yml), 此处不落盘私钥;
-#    公钥(pem+der, 仓库 mok/ 目录)则烘焙进镜像供首次 mokutil --import。
-# ============================================================
-COPY mok/public_key.pem /etc/pki/akmods/certs/public_key.pem
-COPY mok/public_key.der /etc/pki/akmods/certs/public_key.der
-RUN --mount=type=secret,id=mok_priv \
-    set -eux && \
-    KVER="$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}')" && \
-    echo "目标内核: $KVER" && \
-    dnf install -y "kernel-devel-${KVER%.x86_64}" gcc make && \
-    # akmods 编译 VirtualBox 内核模块 (针对镜像内核, 非宿主内核)
-    akmods --force --kernels "$KVER" && \
-    # 用 MOK 私钥对模块签名 (私钥直接读 /run/secrets, 不写入镜像层;
-    #   先解 xz → sign-file 签名 ELF → 再 xz 压回, 与内核模块仓库格式一致)
-    for m in /usr/lib/modules/$KVER/extra/VirtualBox/*.ko*; do \
-        [ -e "$m" ] || continue; \
-        echo "签名模块: $m"; \
-        f="${m%.xz}"; \
-        if [ "$f" != "$m" ]; then xz -d -f "$m"; fi; \
-        /usr/src/kernels/$KVER/scripts/sign-file sha256 /run/secrets/mok_priv /etc/pki/akmods/certs/public_key.pem "$f"; \
-        xz -f "$f"; \
-    done && \
-    # 签名验证 (modinfo 应显示 sig_key)
-    for m in /usr/lib/modules/$KVER/extra/VirtualBox/*.ko.xz; do \
-        echo "验证: $m"; modinfo "$m" | grep -E "sig_key|sig_hashalgo"; \
-    done && \
-    systemctl enable vboxdrv.service 2>/dev/null || true && \
-    dnf remove -y kernel-devel && dnf clean all && rm -rf /usr/src/kernels
-
-# ============================================================
-# 8. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
+# 6. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
 #    2026-08-28: 引导条目上限控制 — 保留最近 5 个部署 (用户 2026-09-01 要求,
 #    由 v4.08 改为 5; trim-deployments.sh 默认 KEEP_DEPLOYMENTS=5),
 #    bootc-update 升级后自动 trim; 另有独立每日 trim timer 兜底
