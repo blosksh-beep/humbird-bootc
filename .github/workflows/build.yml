@@ -31,7 +31,12 @@ jobs:
 
       - name: Set up podman/buildah
         run: |
-          sudo apt-get update
+          # ubuntu runner 偶发 google-chrome 源 hash mismatch → 重试 apt 步骤
+          for i in 1 2 3; do
+            sudo apt-get update && break
+            echo "apt update 失败(第 $i 次), 重试..."
+            sleep 10
+          done
           sudo apt-get install -y podman buildah skopeo
           podman --version
 
