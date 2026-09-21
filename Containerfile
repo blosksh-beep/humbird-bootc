@@ -192,7 +192,10 @@ RUN mkdir -p /usr/lib/bootc/kargs.d && \
 #   VERSION_ID 用 "MMDDAY,4.0.x" 合法 ASCII 点串供 KDE 设置读取;
 #   PRETTY_NAME 同格式, GRUB/bootc 标题随之更新
 COPY VERSION /etc/humbird-image-version
+# 2026-09-21: /etc/os-release 必须是软链 —— 它优先于 /usr/lib/os-release, 若镜像/机器上
+#   留成普通文件就会把上面 sed 写好的版本号盖掉 (本机曾因此一直显示 4.10 而实际跑 4.15)。
 RUN IMG_VER="$(tr -d '[:space:]' < /etc/humbird-image-version)" && \
     MMDAY="$(date -u +%m%d)" && \
     sed -i "s/^VERSION=.*/VERSION=\"${IMG_VER}\"/; s/^VERSION_ID=.*/VERSION_ID=\"${MMDAY}.${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS ${MMDAY} ${IMG_VER}\"/" /usr/lib/os-release && \
+    rm -f /etc/os-release && ln -s ../usr/lib/os-release /etc/os-release && \
     rm -f /etc/humbird-image-version
