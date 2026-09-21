@@ -150,18 +150,23 @@ RUN dnf install -y webkit2gtk4.1 libayatana-appindicator-gtk3 \
     && dnf clean all
 
 # ============================================================
-# 6. 自动更新: 定期检查 ghcr 镜像并升级 (系统服务)
-#    2026-08-28: 引导条目上限控制 — 保留最近 5 个部署 (用户 2026-09-01 要求,
-#    由 v4.08 改为 5; trim-deployments.sh 默认 KEEP_DEPLOYMENTS=5),
-#    bootc-update 升级后自动 trim; 另有独立每日 trim timer 兜底
+# 6. 引导条目保留: 常驻最近 5 个可引导部署
+#    bootc 每次部署新镜像时会自己清掉未 pin 的旧部署 (默认只剩 booted + rollback),
+#    ostree 不会回收 pinned → "保留 N 个" = 把最新 N 个 pin 住, 超出 N 的 unpin+undeploy。
+#    旧实现 (trim-deployments.sh) 只有删除逻辑, 而且装在 /usr/local:
+#    运行时 /usr/local 是指向 /var/usrlocal 的符号链接, 这些单元根本加载不到,
+#    只留下 /etc 里悬空的 enablement 符号链接 → 每次开机报错, 从未生效。
+#    结果 2026-09-03 全部 unpin 后, 每周构建把旧部署逐条清掉, 引导菜单只剩 2 条。
+#    触发点: keep-deployments.service (开机 oneshot) + .timer (每日)。
+#    注意: bootc-update.* 只装不启用 (无人值守升级需显式 systemctl enable)。
 # ============================================================
-COPY trim-deployments.sh /usr/local/bin/trim-deployments.sh
-RUN chmod +x /usr/local/bin/trim-deployments.sh && \
-    mkdir -p /usr/local/lib/systemd/system && \
-    printf '[Unit]\nDescription=Auto-update bootc image\nWants=bootc-update.timer\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bootc upgrade\nExecStartPost=/usr/local/bin/trim-deployments.sh\n' > /usr/local/lib/systemd/system/bootc-update.service && \
-    printf '[Unit]\nDescription=Check bootc image updates daily\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/bootc-update.timer && \
-    printf '[Unit]\nDescription=Trim old bootc deployments (keep newest 5)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/local/lib/systemd/system/trim-deployments.timer && \
-    systemctl enable bootc-update.timer trim-deployments.timer
+COPY keep-deployments.sh /usr/bin/keep-deployments.sh
+RUN chmod +x /usr/bin/keep-deployments.sh && \
+    printf '[Unit]\nDescription=Pin newest bootc deployments (keep 5 bootable entries)\nConditionPathExists=/usr/bin/ostree\n\n[Service]\nType=oneshot\nEnvironment=KEEP_DEPLOYMENTS=5\nExecStart=/usr/bin/keep-deployments.sh\n\n[Install]\nWantedBy=multi-user.target\n' > /usr/lib/systemd/system/keep-deployments.service && \
+    printf '[Unit]\nDescription=Daily: pin newest bootc deployments (keep 5)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\nAccuracySec=5min\n\n[Install]\nWantedBy=timers.target\n' > /usr/lib/systemd/system/keep-deployments.timer && \
+    printf '[Unit]\nDescription=Auto-update bootc image (opt-in: systemctl enable --now bootc-update.timer)\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/bootc upgrade\nExecStartPost=/usr/bin/keep-deployments.sh\n' > /usr/lib/systemd/system/bootc-update.service && \
+    printf '[Unit]\nDescription=Check bootc image updates daily (opt-in, disabled by default)\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > /usr/lib/systemd/system/bootc-update.timer && \
+    systemctl enable keep-deployments.service keep-deployments.timer
 
 # bootc 镜像元数据
 LABEL org.opencontainers.image.title="humbird-bootc" \
