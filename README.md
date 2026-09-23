@@ -1,6 +1,6 @@
-# humbird-bootc 🚀
+# AIOS 🚀
 
-Hummingbird OS 自定义 bootc 镜像——**KDE 中文桌面 + fcitx5 拼音 + zram 交换 + OpenClaw + Clash Verge**，全自动构建和 OTA 更新。
+AIOS 自定义 bootc 镜像——**KDE 中文桌面 + fcitx5 拼音 + zram 交换 + OpenClaw + Clash Verge**，全自动构建和 OTA 更新。
 
 ## 包含内容
 
@@ -24,11 +24,11 @@ Hummingbird OS 自定义 bootc 镜像——**KDE 中文桌面 + fcitx5 拼音 + 
   Dependabot 监控基础镜像更新，自动开 PR
 ```
 
-## 使用（在 Hummingbird OS 上）
+## 使用（在 AIOS 上）
 
 ```bash
 # 1. 切换到自定义镜像（首次）
-sudo bootc switch ghcr.io/blosksh-beep/humbird-bootc:latest
+sudo bootc switch ghcr.io/blosksh-beep/aios:latest
 
 # 2. 重启生效
 sudo systemctl reboot
@@ -44,13 +44,13 @@ sudo bootc upgrade
 - **`v1`、`v2`、`v3`…** — 每次构建自动递增的版本号（仓库 `VERSION` 文件管理）
 - **`latest`** — 始终指向最新构建
 
-切换指定版本：`sudo bootc switch ghcr.io/blosksh-beep/humbird-bootc:v2`
+切换指定版本：`sudo bootc switch ghcr.io/blosksh-beep/aios:v2`
 
 ## 开发
 
 ```bash
 # 本地构建测试
-podman build -t humbird-bootc:test .
+podman build -t aios:test .
 
 # 修改后推送，GitHub Actions 自动构建
 git push origin main

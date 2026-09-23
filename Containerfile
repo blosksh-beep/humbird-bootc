@@ -1,4 +1,4 @@
-# Hummingbird OS 自定义 bootc 镜像
+# AIOS 自定义 bootc 镜像
 # 基础: 官方 hummingbird bootc-os (含 KDE Plasma 6 桌面 + 中文 locale)
 FROM quay.io/hummingbird-community/bootc-os:latest
 
@@ -88,7 +88,7 @@ RUN dnf install -y kate gwenview okular elisa-player dragon kcalc \
     && dnf clean all
 
 # 软件中心 Discover 崩溃修复 (2026-08-29):
-# 根因: Hummingbird 是 ostree/bootc 系统 → /run/ostree-booted 存在 →
+# 根因: AIOS 是 ostree/bootc 系统 → /run/ostree-booted 存在 →
 #       packagekit.service 因 ConditionPathExists=!/run/ostree-booted 永不启动 →
 #       Discover 加载 packagekit-backend 检测到无效后丢弃时,
 #       在 AppStream::Pool::loadFinished 回调里 abort (SIGSEGV/SI_TKILL) 崩溃。
@@ -169,13 +169,13 @@ RUN chmod +x /usr/bin/keep-deployments.sh && \
     systemctl enable keep-deployments.service keep-deployments.timer
 
 # bootc 镜像元数据
-LABEL org.opencontainers.image.title="humbird-bootc" \
-      org.opencontainers.image.description="Hummingbird OS with KDE zh + fcitx5 + zram + openclaw + clash verge" \
-      org.opencontainers.image.source="https://github.com/blosksh-beep/humbird-bootc"
+LABEL org.opencontainers.image.title="aios" \
+      org.opencontainers.image.description="AIOS with KDE zh + fcitx5 + zram + openclaw + clash verge" \
+      org.opencontainers.image.source="https://github.com/blosksh-beep/aios"
 
 # 声明这是 bootc 可引导镜像
 RUN mkdir -p /usr/lib/bootc && \
-    printf 'image: ghcr.io/blosksh-beep/humbird-bootc:latest\n' > /usr/lib/bootc/bootc.yaml
+    printf 'image: ghcr.io/blosksh-beep/aios:latest\n' > /usr/lib/bootc/bootc.yaml
 
 # 内核参数: i915.enable_dc=0 — 禁用显示 DC5/DC6 电源状态
 #   (2026-08-26: rawhide 内核 + 缺 DMC 固件导致 s2idle 待机唤醒挂死/黑屏,
@@ -187,15 +187,15 @@ RUN mkdir -p /usr/lib/bootc/kargs.d && \
 # 独立版本标识: 让 GRUB 引导菜单/BLS 标题区分自定义镜像与官方基础镜像
 # 小版本方案 (2026-08-28): os-release 直接显示 vN.NN → 引导菜单标题
 # 2026-09-01: VERSION_ID 一并改写 (KDE 设置读 KOSRelease::versionId)
-# 2026-09-05: 格式改为 "Hummingbird OS MMDD 4.0.x"(日期=构建月+日)——
+# 2026-09-05: 格式改为 "AIOS MMDD 4.0.x"(日期=构建月+日)——
 #   日期稳(w阶段层每重跑, os-release 层才真正重建, 重写顺序保证后写胜出);
 #   VERSION_ID 用 "MMDDAY,4.0.x" 合法 ASCII 点串供 KDE 设置读取;
 #   PRETTY_NAME 同格式, GRUB/bootc 标题随之更新
-COPY VERSION /etc/humbird-image-version
+COPY VERSION /etc/aios-image-version
 # 2026-09-21: /etc/os-release 必须是软链 —— 它优先于 /usr/lib/os-release, 若镜像/机器上
 #   留成普通文件就会把上面 sed 写好的版本号盖掉 (本机曾因此一直显示 4.10 而实际跑 4.15)。
-RUN IMG_VER="$(tr -d '[:space:]' < /etc/humbird-image-version)" && \
+RUN IMG_VER="$(tr -d '[:space:]' < /etc/aios-image-version)" && \
     MMDAY="$(date -u +%m%d)" && \
-    sed -i "s/^VERSION=.*/VERSION=\"${IMG_VER}\"/; s/^VERSION_ID=.*/VERSION_ID=\"${MMDAY}.${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"Hummingbird OS ${MMDAY} ${IMG_VER}\"/" /usr/lib/os-release && \
+    sed -i "s/^NAME=.*/NAME=\"AIOS\"/; s/^VERSION=.*/VERSION=\"${IMG_VER}\"/; s/^VERSION_ID=.*/VERSION_ID=\"${MMDAY}.${IMG_VER}\"/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"AIOS ${MMDAY} ${IMG_VER}\"/" /usr/lib/os-release && \
     rm -f /etc/os-release && ln -s ../usr/lib/os-release /etc/os-release && \
-    rm -f /etc/humbird-image-version
+    rm -f /etc/aios-image-version
